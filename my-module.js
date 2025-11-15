@@ -1,57 +1,29 @@
-/**
- * Normalize and merge time intervals treating small gaps as continuous.
- *
- * @param {Array<Array<number>>} intervals - list of [start, end) pairs (can be unsorted)
- * @param {number} maxGap - maximum gap (in ms) that we consider joinable
- * @returns {Array<Array<number>>} merged, sorted non-overlapping intervals
- */
-function consolidateIntervals(intervals, maxGap) {
-  // Basic guards
-  if (!Array.isArray(intervals) || intervals.length === 0) return [];
+function mergeTimeRanges(list, gap) {
+  if (!Array.isArray(list) || list.length === 0) return [];
 
-  // Make a shallow copy and ensure each interval is [start, end] numbers
-  const cleaned = intervals
-    .map(pair => [Number(pair[0]), Number(pair[1])])
-    .filter(pair => Number.isFinite(pair[0]) && Number.isFinite(pair[1]) && pair[0] < pair[1]);
-
-  if (cleaned.length === 0) return [];
-
-  // Sort by start time
-  cleaned.sort((a, b) => a[0] - b[0]);
-
+  const arranged = list.slice().sort((x, y) => x[0] - y[0]);
   const result = [];
-  // Start from the first interval
-  let [s, e] = cleaned[0];
+  let start = arranged[0][0];
+  let end = arranged[0][1];
 
-  for (let i = 1; i < cleaned.length; i++) {
-    const [ns, ne] = cleaned[i];
+  for (let i = 1; i < arranged.length; i++) {
+    const s = arranged[i][0];
+    const e = arranged[i][1];
 
-    // Overlap or touching: ns <= e
-    if (ns <= e) {
-      // Extend if needed
-      if (ne > e) e = ne;
-      continue;
+    if (s <= end) {
+      end = e > end ? e : end;
+    } else if (s - end <= gap) {
+      end = e;
+    } else {
+      result.push([start, end]);
+      start = s;
+      end = e;
     }
-
-    // Small gap allowed: if gap <= maxGap, join them
-    const gap = ns - e;
-    if (gap <= maxGap) {
-      // We treat them as continuous — extend the end to the new interval's end
-      e = Math.max(e, ne);
-      continue;
-    }
-
-    // Otherwise, finalize current and move to next
-    result.push([s, e]);
-    s = ns;
-    e = ne;
   }
 
-  // push last accumulated interval
-  result.push([s, e]);
+  result.push([start, end]);
   return result;
+  
 }
 
-module.exports = {
-  mergeTimeRanges: consolidateIntervals
-};
+module.exports = { mergeTimeRanges };
